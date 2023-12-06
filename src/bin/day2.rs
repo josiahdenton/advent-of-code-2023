@@ -3,63 +3,30 @@ use std::fmt::Display;
 use anyhow::{anyhow, Result};
 use aoc::{Part, Pattern};
 
-#[derive(PartialEq, PartialOrd)]
-enum Color {
-    Reds(u32),
-    Greens(u32),
-    Blues(u32),
-}
-
-impl Color {
-    fn count(&self) -> u32 {
-        match self {
-            Color::Reds(x) => *x,
-            Color::Greens(x) => *x,
-            Color::Blues(x) => *x,
-        }
-    }
-}
-
 struct Count {
-    reds: Color,
-    greens: Color,
-    blues: Color,
+    reds: u32,
+    greens: u32,
+    blues: u32,
 }
 
 impl Count {
     fn new(reds: u32, greens: u32, blues: u32) -> Self {
         Self {
-            reds: Color::Reds(reds),
-            greens: Color::Greens(greens),
-            blues: Color::Blues(blues),
+            reds,
+            greens,
+            blues,
         }
     }
 
     fn power(&self) -> u32 {
-        self.reds.count() * self.blues.count() * self.greens.count()
+        self.reds * self.blues * self.greens
     }
 }
 
 // for debugging
 impl Display for Count {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "R:{} G:{} B:{}", self.reds.count(), self.greens.count(), self.blues.count())
-    }
-}
-
-struct Rules {
-    max_reds: Color,
-    max_greens: Color,
-    max_blues: Color,
-}
-
-impl Rules {
-    fn new(reds: u32, greens: u32, blues: u32) -> Self {
-        Self {
-            max_reds: Color::Reds(reds),
-            max_greens: Color::Greens(greens),
-            max_blues: Color::Blues(blues),
-        }
+        write!(f, "R:{} G:{} B:{}", self.reds, self.greens, self.blues,)
     }
 }
 
@@ -79,26 +46,23 @@ impl Game {
         let mut greens = 0;
         // find the 3 maxes of each color in any round played in a game
         for count in &self.rounds[..] {
-            if count.reds.count() > reds {
-                reds = count.reds.count();
+            if count.reds > reds {
+                reds = count.reds;
             }
-            if count.blues.count() > blues {
-                blues = count.blues.count();
+            if count.blues > blues {
+                blues = count.blues;
             }
-            if count.greens.count() > greens {
-                greens = count.greens.count();
+            if count.greens > greens {
+                greens = count.greens;
             }
         }
 
         Count::new(reds, greens, blues)
     }
 
-    fn is_possible(&self, rules: &Rules) -> bool {
+    fn is_possible(&self, rules: &Count) -> bool {
         for round in &self.rounds[..] {
-            if round.blues > rules.max_blues
-                || round.reds > rules.max_reds
-                || round.greens > rules.max_greens
-            {
+            if round.blues > rules.blues || round.reds > rules.reds || round.greens > rules.greens {
                 return false;
             }
         }
@@ -110,14 +74,14 @@ impl Game {
 fn main() {
     let (problem, mut context) = aoc::setup_day();
 
-    let rules = Rules::new(12, 13, 14);
+    let max_cube_rule = Count::new(12, 13, 14);
 
     let mut sum_ids = 0;
 
     let mut games = vec![];
     while let Some(line) = context.get_line() {
         let game = parse_game(&line).expect("could not parse game");
-        if game.is_possible(&rules) {
+        if game.is_possible(&max_cube_rule) {
             sum_ids += game.id;
         }
         games.push(game);

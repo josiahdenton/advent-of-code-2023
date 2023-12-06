@@ -13,9 +13,7 @@ fn main() {
     let mut calibration = 0;
     while let Some(line) = context.get_line() {
         let (left, right) = find_num_pairs(&line, &allow_list);
-        let delta = left * 10 + right;
-        println!("{delta}");
-        calibration += delta;
+        calibration += left * 10 + right;
     }
     println!("calibration value: {calibration}");
 }
