@@ -1,7 +1,10 @@
 use aoc::Part;
 
-fn main() {
-    let (problem, mut context) = aoc::setup_day();
+use anyhow::Result;
+
+fn main() -> Result<()> {
+    let problem = aoc::fetch_problem()?;
+    let mut reader = aoc::open_into_buffered_reader(&problem.path)?;
 
     let mut allow_list = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9"];
     if problem.part == Part::P2 {
@@ -11,11 +14,13 @@ fn main() {
     }
 
     let mut calibration = 0;
-    while let Some(line) = context.get_line() {
+    while let Some(line) = aoc::get_line(&mut reader) {
         let (left, right) = find_num_pairs(&line, &allow_list);
         calibration += left * 10 + right;
     }
     println!("calibration value: {calibration}");
+
+    Ok(())
 }
 
 fn find_num_pairs(line: &str, allow_list: &[&str]) -> (u32, u32) {

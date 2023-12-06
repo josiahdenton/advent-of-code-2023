@@ -71,15 +71,16 @@ impl Game {
     }
 }
 
-fn main() {
-    let (problem, mut context) = aoc::setup_day();
+fn main() -> Result<()> {
+    let problem = aoc::fetch_problem()?;
+    let mut reader = aoc::open_into_buffered_reader(&problem.path)?;
 
     let max_cube_rule = Count::new(12, 13, 14);
 
     let mut sum_ids = 0;
 
     let mut games = vec![];
-    while let Some(line) = context.get_line() {
+    while let Some(line) = aoc::get_line(&mut reader) {
         let game = parse_game(&line).expect("could not parse game");
         if game.is_possible(&max_cube_rule) {
             sum_ids += game.id;
@@ -89,7 +90,7 @@ fn main() {
     println!("sum ids is {sum_ids}");
 
     if problem.part == Part::P1 {
-        return;
+        return Ok(());
     }
 
     let mut sum_powers = 0;
@@ -98,6 +99,8 @@ fn main() {
         sum_powers += count.power();
     }
     println!("sum powers is {sum_powers}");
+
+    Ok(())
 }
 
 fn game_id(game_header: &str) -> Result<u32> {
