@@ -3,6 +3,9 @@ use std::{cell::RefCell, collections::HashMap, fs};
 use anyhow::Result;
 
 const BASE: u32 = 2;
+const DEFAULT_CARD_COUNT: u32 = 1;
+const THIS_CARD_OFFSET: u32 = 1;
+const EXCLUSIVE_END_OFFSET: u32 = 1;
 
 type Range = (u32, u32);
 
@@ -18,7 +21,7 @@ fn main() -> Result<()> {
 
 fn find_total_card_count(cards: &str) -> u32 {
     let mut card_copies: RefCell<HashMap<u32, u32>> = RefCell::new(HashMap::new());
-    let card_count = cards
+    cards
         .lines()
         .map(|card| {
             let scratcher = card.split(":").collect::<Vec<&str>>();
@@ -42,34 +45,26 @@ fn find_total_card_count(cards: &str) -> u32 {
             if total_winning_nums > 0 {
                 add_scratcher_copies(
                     card_copies.get_mut(),
-                    // don't add yourself, and end of range is exlusive so + 1
-                    (scratcher_id + 1, scratcher_id + total_winning_nums + 1),
+                    // don't add yourself, and end of range is exclusive so + 1
+                    (scratcher_id + THIS_CARD_OFFSET, scratcher_id + total_winning_nums + EXCLUSIVE_END_OFFSET),
                     this_card_count,
                 );
             }
 
             this_card_count
         })
-        .sum();
-
-    println!("{:?}", card_copies.borrow());
-
-    card_count
+        .sum()
 }
 
 fn add_scratcher_copies(card_copies: &mut HashMap<u32, u32>, range: Range, this_card_count: u32) {
-    println!("with {this_card_count} x scratchers");
-    print!("adding scratcher ids: ");
     for scratcher_id in (range.0)..(range.1) {
-        print!("{scratcher_id}, ");
         if card_copies.contains_key(&scratcher_id) {
             *card_copies.get_mut(&scratcher_id).unwrap() += this_card_count;
         } else {
             // there is always 1 scratcher, so we process based off of this_card_count + 1
-            card_copies.insert(scratcher_id, 1 + this_card_count);
+            card_copies.insert(scratcher_id, DEFAULT_CARD_COUNT + this_card_count);
         }
     }
-    println!("");
 }
 
 fn find_winning_total(cards: &str) -> u32 {
@@ -119,7 +114,7 @@ mod test {
     use crate::find_winning_total;
 
     #[test]
-    fn day4_scratchers_examble() {
+    fn day4_scratchers_example() {
         let s = "Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
 Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
 Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
@@ -129,7 +124,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 ";
         let winning_sum = find_winning_total(&s);
         let card_cnt = find_total_card_count(&s);
-        assert!(winning_sum == 13, "total not correct: {winning_sum}");
-        assert!(card_cnt == 30, "card count incorrect: {card_cnt}");
+        assert_eq!(winning_sum, 13, "total not correct: {winning_sum}");
+        assert_eq!(card_cnt, 30, "card count incorrect: {card_cnt}");
     }
 }
