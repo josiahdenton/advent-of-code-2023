@@ -7,6 +7,14 @@ const DEST_POS: usize = 0;
 const SRC_POS: usize = 1;
 const RANGE_POS: usize = 2;
 
+#[derive(PartialEq, Eq)]
+enum Overlap {
+    Right,
+    Left,
+    Contains,
+    None,
+}
+
 #[derive(Debug)]
 struct MapEntry {
     src_range: Range<i64>,
@@ -48,17 +56,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn map_seeds_to_location(seeds: Vec<i64>, maps: &Vec<Vec<MapEntry>>) -> Vec<i64> {
-    let mut locations: Vec<i64> = vec![];
-    for seed in seeds {
-        let mut mapped_seed = seed;
-        for map in &maps[..] {
-            mapped_seed = map_seed(mapped_seed, map);
-        }
-        locations.push(mapped_seed);
-    }
-    locations
-}
+// ====================================================
+//                      Part 2
+// ====================================================
 
 fn map_seed_range_to_lowest_location(seed_range: Range<i64>, maps: &Vec<Vec<MapEntry>>) -> i64 {
     let mut mapped = vec![seed_range];
@@ -81,14 +81,6 @@ fn map_seed_range_to_lowest_location(seed_range: Range<i64>, maps: &Vec<Vec<MapE
         })
         .expect("there should be at least 1 item")
         .clone()
-}
-
-#[derive(PartialEq, Eq)]
-enum Overlap {
-    Right,
-    Left,
-    Contains,
-    None,
 }
 
 fn shred(to_map: &mut Vec<Range<i64>>, map: &Vec<MapEntry>) -> Vec<Range<i64>> {
@@ -120,7 +112,6 @@ fn shred(to_map: &mut Vec<Range<i64>>, map: &Vec<MapEntry>) -> Vec<Range<i64>> {
 
     mapped
 }
-
 
 fn range_overlap(seed_range: &Range<i64>, map_range: &Range<i64>) -> Overlap {
     // remember the end is exclusive, so we deduct 1 to represent the last number in a range
@@ -156,6 +147,22 @@ fn split_range(
     }
 }
 
+// ====================================================
+//                      Part 1
+// ====================================================
+
+fn map_seeds_to_location(seeds: Vec<i64>, maps: &Vec<Vec<MapEntry>>) -> Vec<i64> {
+    let mut locations: Vec<i64> = vec![];
+    for seed in seeds {
+        let mut mapped_seed = seed;
+        for map in &maps[..] {
+            mapped_seed = map_seed(mapped_seed, map);
+        }
+        locations.push(mapped_seed);
+    }
+    locations
+}
+
 fn map_seed(seed: i64, map: &Vec<MapEntry>) -> i64 {
     for entry in map {
         if entry.src_range.contains(&seed) {
@@ -164,6 +171,10 @@ fn map_seed(seed: i64, map: &Vec<MapEntry>) -> i64 {
     }
     seed
 }
+
+// ====================================================
+//                      Parsing
+// ====================================================
 
 fn parse_seed_header(input: &str) -> Vec<i64> {
     let lines = input.lines().collect::<Vec<&str>>();
@@ -236,6 +247,11 @@ fn parse_seeds(seeds: &str) -> Vec<i64> {
         .map(|seed| seed.trim().parse::<i64>().expect("could not parse seed"))
         .collect()
 }
+
+
+// ====================================================
+//                      Unit Tests
+// ====================================================
 
 #[cfg(test)]
 mod test {
