@@ -38,10 +38,7 @@ fn main() -> Result<()> {
         let mut lowest_location_of_ranges = vec![];
         let seed_ranges = parse_seed_ranges(&seeds);
         for seed_range in seed_ranges {
-            let lowest_location_of_range = *map_seed_ranges_to_location(seed_range, maps)
-                .iter()
-                .min()
-                .expect("no min??");
+            let lowest_location_of_range = map_seed_range_to_lowest_location(seed_range, maps);
             lowest_location_of_ranges.push(lowest_location_of_range);
         }
         let super_low = lowest_location_of_ranges.iter().min().expect("huh?");
@@ -63,32 +60,30 @@ fn map_seeds_to_location(seeds: Vec<i64>, maps: &Vec<Vec<MapEntry>>) -> Vec<i64>
     locations
 }
 
-// were going to have to do ranges... that means we
-// want to split the ranges if they don't fit in the range of the map.
-// if there is no map range it fits in, we just map directly
-// this will happen for every range
-fn map_seed_ranges_to_location(seed_range: Range<i64>, maps: &Vec<Vec<MapEntry>>) -> Vec<i64> {
-    let mut thousandth_thresh = (seed_range.end - seed_range.start) / 1000;
-    let start_point_offset = seed_range.start;
-    let mut locations: Vec<Range<i64>> = vec![];
+fn map_seed_range_to_lowest_location(seed_range: Range<i64>, maps: &Vec<Vec<MapEntry>>) -> i64 {
+    let mut mapped = vec![seed_range];
 
-    let mut to_map = vec![seed_range];
-    let mut mapped = vec![];
-
-    while to_map.len() > 0 {
-        for map in &maps[..] {
-            // compare the ranges with the MapEntry and see where we need to split...
-            // if any overlap found, split it
-            let (mapped_range, leftovers) = shred_ranges(seed_range, map);
-            mapped
-        }
-
+    // go through the maps
+    for map in &maps[..] {
+        mapped = shred(&mut mapped, map);
     }
 
-    // would be easy to turn this into a map & min
-    vec![]
+    // now each range is mapped to a location
+    mapped
+        .iter()
+        // I only care about the lowest value in the range
+        .map(|range| range.start)
+        .reduce(|lowest_location, location| {
+            if location < lowest_location {
+                return location;
+            }
+            lowest_location
+        })
+        .expect("there should be at least 1 item")
+        .clone()
 }
 
+#[derive(PartialEq, Eq)]
 enum Overlap {
     Right,
     Left,
@@ -96,46 +91,69 @@ enum Overlap {
     None,
 }
 
-fn shred_ranges(seed_range: Range<i64>, map: &Vec<MapEntry>) -> (Range<i64>, Option<Range<i64>>) {
-    for entry in map {
-        // I want to compare ranges and see if they overlap at all
-        let overlap = range_overlap(&seed_range, &entry.src_range);
-        // if overlap == Overlap::None {
-        //     continue;
-        // }
+fn shred(to_map: &mut Vec<Range<i64>>, map: &Vec<MapEntry>) -> Vec<Range<i64>> {
+    let mut mapped = vec![];
 
-        return match overlap {
-            Overlap::Right => (
-                (entry.src_range.start + entry.dest_offset)..(seed_range.end + entry.dest_offset),
-                Some(seed_range.start..entry.src_range.start),
-            ),
-            Overlap::Left => (
-                (seed_range.start + entry.dest_offset)..(entry.src_range.end + entry.dest_offset),
-                Some(entry.src_range.end..seed_range.end),
-            ),
-            Overlap::Contains => (
-                (seed_range.start + entry.dest_offset)..(seed_range.end + entry.dest_offset),
-                None,
-            ),
-            Overlap::None => continue,
-        };
+    // for each seed
+    // find an entry with overlap
+    // else, we don't map and pass it on as mapped
+    // if there are any leftovers, re-shred the leftovers until we have no leftovers (recursive)
+    while to_map.len() > 0 {
+        let seed_range = to_map.pop().expect("there is a len check, haha");
+        // find a map_entry where there is at least 1 overlapping number
+        let map_entry = map
+            .iter()
+            .find(|entry| range_overlap(&seed_range, &entry.src_range) != Overlap::None);
+        if let Some(entry) = map_entry {
+            // there is at least some overlap, so we split on that mapping
+            let overlap = range_overlap(&seed_range, &entry.src_range);
+            let (mapped_range, leftover) = split_range(seed_range, entry, overlap);
+            mapped.push(mapped_range);
+            if let Some(leftover) = leftover {
+                to_map.push(leftover);
+            }
+        } else {
+            // no match, we just pass it on as a direct map
+            mapped.push(seed_range);
+        }
     }
 
-    // return range i64 where range is the mapped offset, second arg is any leftovers that did not
-    // fit, None if everything "mapped"
-    (seed_range, None)
+    mapped
 }
 
+
 fn range_overlap(seed_range: &Range<i64>, map_range: &Range<i64>) -> Overlap {
-    if map_range.contains(&seed_range.end) {
+    // remember the end is exclusive, so we deduct 1 to represent the last number in a range
+    if map_range.contains(&seed_range.start) && map_range.contains(&(seed_range.end - 1)) {
+        return Overlap::Contains;
+    } else if map_range.contains(&(seed_range.end - 1)) {
         return Overlap::Right;
     } else if map_range.contains(&seed_range.start) {
         return Overlap::Left;
-    } else if map_range.contains(&seed_range.start) && map_range.contains(&seed_range.end) {
-        return Overlap::Contains;
     }
-
     Overlap::None
+}
+
+fn split_range(
+    seed_range: Range<i64>,
+    entry: &MapEntry,
+    overlap: Overlap,
+) -> (Range<i64>, Option<Range<i64>>) {
+    match overlap {
+        Overlap::Right => (
+            (entry.src_range.start + entry.dest_offset)..(seed_range.end + entry.dest_offset),
+            Some(seed_range.start..entry.src_range.start),
+        ),
+        Overlap::Left => (
+            (seed_range.start + entry.dest_offset)..(entry.src_range.end + entry.dest_offset),
+            Some(entry.src_range.end..seed_range.end),
+        ),
+        Overlap::Contains => (
+            (seed_range.start + entry.dest_offset)..(seed_range.end + entry.dest_offset),
+            None,
+        ),
+        Overlap::None => panic!("cannot split a non-overlaping range"),
+    }
 }
 
 fn map_seed(seed: i64, map: &Vec<MapEntry>) -> i64 {
@@ -222,8 +240,8 @@ fn parse_seeds(seeds: &str) -> Vec<i64> {
 #[cfg(test)]
 mod test {
     use crate::{
-        map_seed_ranges_to_location, map_seeds_to_location, parse_seed_header, parse_seed_maps,
-        parse_seed_ranges,
+        map_seed_range_to_lowest_location, map_seeds_to_location, parse_seed_header,
+        parse_seed_maps, parse_seed_ranges,
     };
 
     #[test]
@@ -317,10 +335,8 @@ humidity-to-location map:
         let mut lowest_location_of_ranges = vec![];
         let seed_ranges = parse_seed_ranges(&seeds);
         for seed_range in seed_ranges {
-            let lowest_location_of_range = *map_seed_ranges_to_location(seed_range, &maps)
-                .iter()
-                .min()
-                .expect("no min??");
+            println!("mappind seed range {:?}", seed_range);
+            let lowest_location_of_range = map_seed_range_to_lowest_location(seed_range, &maps);
             lowest_location_of_ranges.push(lowest_location_of_range);
         }
         let super_low = *lowest_location_of_ranges.iter().min().expect("huh?");
