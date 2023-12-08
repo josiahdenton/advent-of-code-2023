@@ -4,6 +4,9 @@
 
 - [x] day 1
 - [x] day 2
-- [ ] day 3
-- [ ] day 4
-- [ ] day 5
+- [x] day 3
+- [x] day 4
+- [x] day 5
+- [x] day 6
+- [x] day 7
+- [x] day 8

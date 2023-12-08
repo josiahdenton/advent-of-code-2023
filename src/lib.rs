@@ -95,3 +95,21 @@ impl Problem {
         Self { part, path }
     }
 }
+
+pub fn lcm(a: usize, b: usize) -> usize {
+    a * b / gcd(a, b)
+}
+
+pub fn gcd(a: usize, b: usize) -> usize {
+    let mut max = a.max(b);
+    let mut min = a.min(b);
+
+    loop {
+        let res = max % min;
+        if res == 0 {
+            return min;
+        }
+        max = min;
+        min = res;
+    }
+}
